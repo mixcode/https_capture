@@ -4,7 +4,7 @@
 A tiny HTTP/HTTPS MITM proxy utility to log, capture and save HTTP communications to files.
 
 
-# How to use
+## How to use
 
 ```
 ./https_capture -addr=:38080 -dir=./captured -log=log.txt -t
@@ -14,7 +14,7 @@ Run the program, then set your web proxy to the machine's `:38080` port. Then th
 
 
 
-# Connection log
+## Connection log
 
 For each HTTP(s) connection, the request headers and response headers are logged to a log file. 
 
@@ -22,7 +22,7 @@ Logs are chunks of tab-indented lines.
 Lines with no tabs, and an RFC3339 timestamp, and a sequence number for each connection (in a square bracket) are the beginning of a new chunk.
 
 Each chunk is the start of an HTTP connection or the end of an HTTP connection. The contents of a connection are stored when the connection ends. HTTP headers are written along with the end of the connection as tab-indented lines.
-Each HTTP request body and response body are stored as a file. The filename of saved body contents begins with the sequence number of the connection. Following the sequence number, there is a mark, "\_a\_" or "\_b\_", each means request body and response body.
+If there are any HTTP bodies, then the saved filename is shown at the end of chunk.
 
 
 This is an example of captured logs.
@@ -57,7 +57,29 @@ This is an example of captured logs.
 ```
 
 
-# Capturing HTTPS communications
+## Recorded HTTP bodies
+
+Each HTTP request body and response body are stored as a file.
+The filename of saved body contents begins with the sequence number of the connection.
+Following the sequence number, there is a mark, "\_a\_" or "\_b\_", that means request body and response body.
+
+This is an example of stored files.
+```
+$ ls ./captured
+-rw-r--r--. 1 mixcode     44 04-28 19:39 000245_b_gn.gif
+-rw-r--r--. 1 mixcode     35 04-28 19:39 000246_b_unknown.bin
+-rw-r--r--. 1 mixcode     43 04-28 19:39 000247_b_vad.gif
+-rw-r--r--. 1 mixcode   1477 04-28 19:39 000248_a_request.bin
+-rw-r--r--. 1 mixcode    239 04-28 19:39 000248_b_yql.txt
+-rw-r--r--. 1 mixcode  35362 04-28 19:39 000252_a_request.bin
+-rw-r--r--. 1 mixcode    239 04-28 19:39 000252_b_yql.txt
+-rw-r--r--. 1 mixcode     44 04-28 19:39 000253_b_gn.gif
+-rw-r--r--. 1 mixcode    727 04-28 19:39 000255_b_offer.js
+-rw-r--r--. 1 mixcode     43 04-28 19:39 000257_b_p.gif
+```
+
+
+## Capturing HTTPS communications
 
 __!! WARNING !! DO THIS ONLY IF YOU REALLY KNOW WHAT YOU ARE DOING !!__
 
