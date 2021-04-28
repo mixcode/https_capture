@@ -1,7 +1,7 @@
 
-# http_capture: What is this?
+# https_capture: What is this?
 
-A tiny HTTP/HTTPS MITM proxy utility to log, capture and save HTTP communications to files.
+A tiny HTTP/HTTPS MITM proxy utility to log, capture and save HTTP(s) communications to files.
 
 
 ## How to install
