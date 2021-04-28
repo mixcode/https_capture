@@ -96,5 +96,12 @@ __!! WARNING !! DO THIS ONLY IF YOU REALLY KNOW WHAT YOU ARE DOING !!__
 
 As of the nature of HTTPS, you cannot interfere with HTTPS communications normally.
 If you really want to capture HTTPS connections, you have to install the [goproxy](https://github.com/mixcode/goproxy)'s [root cert](https://github.com/mixcode/goproxy/blob/master/ca.pem) to your device as a Trusted Root certificate to do a MITM-attack on HTTPS connections.
-(If you does not know how to do it, then Google it)
+(If you does not know how to install a Root Cert, then consult Google)
+
+
+
+## Revealing the Secret
+
+The core proxy function of this utility is based on [elazarl's goproxy] (https://github.com/elazarl/goproxy) library. Actually, this repository is just a wrapper of the awesome library. Thanks to the author of goproxy.
+
 
