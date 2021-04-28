@@ -4,14 +4,25 @@
 A tiny HTTP/HTTPS MITM proxy utility to log, capture and save HTTP communications to files.
 
 
+## How to install
+
+Be sure to have the latest version of [go-language](https://golang.org/) command line.
+Then do the following.
+```
+go install github.com/mixcode/https_capture@latest
+```
+
 ## How to use
 
+
+A quick example:
 ```
-./https_capture -addr=:38080 -dir=./captured -log=log.txt -t
+./https_capture -addr=:38080 -dir=./captured -log=log.txt -t -e
 ```
 
-Run the program, then set your web proxy to the machine's `:38080` port. Then the HTTP requests will be stored in the `./captured` directory. The `-t` makes the log echoed to STDOUT.
+Run the program, then set your web proxy to the machine's `:38080` port. Then the HTTP requests will be stored in the `./captured` directory. The `-t` makes the log echoed to STDOUT. The '-e' will erase the capturing directory when starting.
 
+To see available options, do `https_capture --help`.
 
 
 ## Connection log
