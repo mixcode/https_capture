@@ -7,14 +7,18 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 const (
-	gendir  = "./generated"
-	keyfile = "p521privatekey.der"
+	gendir   = "./generated"
+	keyfile  = "p521privatekey.der"
+	certfile = "rootcert.der"
 )
 
 // a dummy reader with zero-bytes
@@ -33,6 +37,62 @@ func generateZeroInputP521Key() (key *ecdsa.PrivateKey, err error) {
 	return ecdsa.GenerateKey(elliptic.P521(), z)
 }
 
+func genRootCA(key *ecdsa.PrivateKey) (cert *x509.Certificate, err error) {
+	serial := big.NewInt(1)
+	nb, _ := time.Parse("2006-01-02 15:04:05", "2020-01-01 00:00:00")
+	na, _ := time.Parse("2006-01-02 15:04:05", "2039-12-31 23:59:59")
+
+	//
+	// Create a CA cert template
+	// Note that name information are illegitimate
+	//
+	var template = &x509.Certificate{
+
+		SerialNumber: serial,
+
+		Subject: pkix.Name{
+			Country:            []string{"ZZ"},
+			Organization:       []string{"https_capture"},
+			OrganizationalUnit: []string{"https_capture"},
+			Locality:           []string{"Invalid City"},  // City
+			Province:           []string{"Invalid State"}, // State
+			StreetAddress:      []string{"Invalid Street Address"},
+			PostalCode:         []string{"1-1"},
+
+			SerialNumber: serial.String(),
+			CommonName:   "https_capture default dummy Root CA",
+		},
+		//DNSNames: []string{},
+		//EmailAddresses: []string{},
+		//IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
+		//URIs: []*uri.URL
+
+		NotBefore: nb,
+		NotAfter:  na,
+
+		KeyUsage:    x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+		MaxPathLen:            2,
+		MaxPathLenZero:        false,
+	}
+
+	// get pubkey
+	pubKey := key.Public()
+
+	// create cert bytes
+	var z zeroReader = 0
+	certBytes, err := x509.CreateCertificate(z, template, template, pubKey, key)
+	if err != nil {
+		return
+	}
+
+	// parse the cert into *x509.Certificate
+	return x509.ParseCertificate(certBytes)
+}
+
 func run() (err error) {
 
 	// create a key with NON-random input bytes
@@ -45,13 +105,29 @@ func run() (err error) {
 		return
 	}
 
-	// write
+	// write key
 	err = os.MkdirAll(gendir, 0755)
 	if err != nil {
 		return
 	}
-	fname := filepath.Join(gendir, keyfile)
-	return os.WriteFile(fname, b, 0644)
+	fkey := filepath.Join(gendir, keyfile)
+	err = os.WriteFile(fkey, b, 0644)
+	if err != nil {
+		return
+	}
+
+	// create the Root Cert
+	cert, err := genRootCA(key)
+	if err != nil {
+		return
+	}
+	fcert := filepath.Join(gendir, certfile)
+	err = os.WriteFile(fcert, cert.Raw, 0644)
+	if err != nil {
+		return
+	}
+
+	return
 }
 
 func main() {
