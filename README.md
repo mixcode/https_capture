@@ -1,7 +1,7 @@
 
-# https\_capture: What is this?
+# https\_capture: A tiny HTTPS capturing MITM proxy utility
 
-A tiny HTTP/HTTPS MITM proxy utility to log, capture and save HTTP(s) communications to files.
+`https_capture` is a tiny HTTP/HTTPS MITM proxy utility to log, capture and save HTTP(s) communications to files.
 
 
 ## Install and setup
@@ -15,14 +15,14 @@ go install github.com/mixcode/https_capture@latest
 
 ### Create a dummy Root CA certificate to peek HTTPS communications
 
-To peek HTTPS communications, you have to tell your web client that https\_capture proxy is trustable. You can do it by creating and installing a Root CA certificate of https\_proxy to the web client.
+To peek HTTPS communications, you have to tell your web client that https\_capture proxy is trustable. You can do it by creating and installing a self-signed (insecure) Root CA certificate of https\_proxy to the web client.
 
 This command creates a new cert and saves it to 'my\_insecure\_root\_ca.cer'
 ```
 https_capture --generate-cert my_insecure_root_ca.cer
 ```
 
-You have to install the generated cert (in this case `my\_insecure\_root\_ca.cer`) to your web client or OS. Refer to the client or OS manuals for details.
+You have to install the generated cert (in this case `my_insecure_root_ca.cer`) to your web client or OS. Refer to the client or OS manuals for details.
 
 
 ### Start the proxy server
@@ -32,7 +32,7 @@ A quick example:
 $ https_capture -addr=:38080 -dir=./captured -log=log.txt -c -tee my_insecure_root_ca.cer
 ```
 
-Run the proxy with the generated cert on the machine's `:38080` port. The HTTP requests will be stored in the `./captured` directory. The `-tee` makes the log echoed to STDOUT. The '-c' will clear the capturing directory when starting.
+Run the proxy with the generated cert on the machine's `:38080` port. The HTTP requests will be stored in the `./captured` directory. The `-tee` makes the log echoed to STDOUT. The `-c` will clear the capturing directory when starting.
 
 To see available options, do `https_capture --help`.
 
