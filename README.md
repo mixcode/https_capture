@@ -110,7 +110,7 @@ $ ls ./captured
 
 ## The Internal
 
-This program is rather a placeholder for a customizable HTTP debugger than a standalone utility. The core proxy function of this utility is based on [elazarl's goproxy](https://github.com/elazarl/goproxy) library, and this utility wraps the functions into a command-line program.
+This program is rather a placeholder for a customizable HTTP debug logger than a standalone utility. The core proxy function of this utility is based on [elazarl's goproxy](https://github.com/elazarl/goproxy) library, and this utility wraps the functions into a command-line program.
 
 All HTTP data goes through the callback functions in `handler.go`. Currently, all data are blindly saved into the capture directory. However, you may find it is trivial to filter and select the data of your interest.
 

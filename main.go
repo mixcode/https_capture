@@ -207,6 +207,16 @@ func run() (err error) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGHUP)
 
+	select {
+	case s := <-sigChan: // a signal received
+		if verbose {
+			fmt.Printf("received a OS signal (%v)\n", s)
+		}
+
+	case e := <-logErrorChan: // log write failed
+		err = e
+	}
+
 	// terminate the proxy
 	if verbose {
 		fmt.Println("terminating proxy...")
