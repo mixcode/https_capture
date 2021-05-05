@@ -22,7 +22,7 @@ To peek HTTPS communications, you have to tell your web client that https\_captu
 
 This command creates a new cert and saves it to 'my\_insecure\_root\_ca.cer'
 ```
-https_capture --generate-cert my_insecure_root_ca.cer
+https_capture -generate-cert my_insecure_root_ca.cer
 ```
 
 You have to install the generated cert (in this case `my_insecure_root_ca.cer`) to your web client or OS. Refer to the client or OS manuals for details.
@@ -35,9 +35,9 @@ A quick example:
 $ https_capture -addr=:38080 -dir=./captured -log=log.txt -c -tee my_insecure_root_ca.cer
 ```
 
-Run the proxy with the generated cert on the machine's `:38080` port. The HTTP requests will be stored in the `./captured` directory. The `-tee` makes the log echoed to STDOUT. The `-c` will clear the capturing directory when starting.
+Run the proxy with the generated cert on the machine's `:38080` port. The HTTP requests will be stored in the `./captured` directory. The `-tee` makes the log echoed to STDOUT. The `-c` will clear the capturing directory on start.
 
-To see available options, do `https_capture --help`.
+To see available options, do `https_capture -help`.
 
 
 ### start sending data through the proxy

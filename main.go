@@ -354,7 +354,7 @@ func main() {
 	flag.BoolVar(&cleanCaptureDir, "c", cleanCaptureDir, "clear the capture directory on start")
 
 	// -inline: log POST bodies directly into the log list file
-	flag.BoolVar(&logPostInline, "p", logPostInline, "log POST bodies directly into logfile")
+	flag.BoolVar(&logPostInline, "p", logPostInline, "log POST request bodies directly into the logfile")
 
 	// -tee
 	flag.BoolVar(&tee, "tee", tee, "print logs to stdout along with the logfile")
@@ -367,11 +367,11 @@ func main() {
 
 	// -generate-cert : create a CA cert and save it to a file
 	var genCertFlag = false
-	flag.BoolVar(&genCertFlag, "generate-cert", false, "Generate a self-signed Root CA cert using built-in (insecure) default key and write it to given filename")
+	flag.BoolVar(&genCertFlag, "generate-cert", false, "generate a self-signed Root CA cert using built-in (insecure) default key and write it to given filename")
 
 	// -print-builtin-cert : print the default built-in CA cert to a file
 	var printCertFlag = false
-	flag.BoolVar(&printCertFlag, "print-builtin-cert", false, "Write the built-in default insecure Root CA to a file")
+	flag.BoolVar(&printCertFlag, "print-builtin-cert", false, "write the built-in default insecure Root CA to a file")
 
 	flag.Parse()
 

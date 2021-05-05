@@ -69,10 +69,14 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			if len(ct) > 0 {
 				contentType = ct[0]
 			}
-			_, _, ext, isText, _ := mediaType(contentType)
+			isText := true
+			ext := ""
+			if contentType != "" {
+				_, _, ext, isText, _ = mediaType(contentType)
+			}
 
 			if logPostInline && isText {
-				writef("\t%s\n", string(conn.ReqBody.Buffer[:conn.ReqBody.Size]))
+				writef("\t\t%s\n", string(conn.ReqBody.Buffer[:conn.ReqBody.Size]))
 			} else {
 				if ext == "" {
 					ext = ".bin"
@@ -82,7 +86,7 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 				if err != nil {
 					return
 				}
-				writef("\t\tfilename: %s\n", filename)
+				writef("\t\t(saved to %s)\n", filename)
 			}
 		}
 
@@ -137,7 +141,7 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			}
 
 			writef("\t---- Resp body ----\n")
-			writef("\t\t(saved to: [%s])\n", shortname)
+			writef("\t\t(saved to %s)\n", shortname)
 
 			err = os.WriteFile(filepath.Join(captureDir, shortname), conn.RespBody.Buffer[:conn.RespBody.Size], 0644)
 			if err != nil {
