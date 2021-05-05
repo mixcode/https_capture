@@ -92,7 +92,7 @@ func generateZeroInputP521Key() (key *ecdsa.PrivateKey, err error) {
 	return ecdsa.GenerateKey(elliptic.P521(), z)
 }
 
-// a dummy reader with zero-bytes
+// a dummy reader with fixed value bytes
 type zeroReader byte
 
 func (z zeroReader) Read(p []byte) (n int, err error) {

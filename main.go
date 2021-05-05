@@ -179,7 +179,11 @@ func run() (err error) {
 	proxy.OnResponse().DoFunc(respHandler)
 
 	// set verbose flag of proxy engine
-	proxy.Verbose = verbose
+	if verbose {
+		proxy.Verbose = goproxy.LOGLEVEL_VERBOSE
+	} else {
+		proxy.Verbose = goproxy.LOGLEVEL_NONE
+	}
 
 	if verbose {
 		fmt.Println("proxy started")

@@ -22,7 +22,7 @@ const (
 	certfile = "rootcert"
 )
 
-// a dummy reader with zero-bytes
+// a dummy reader with fixed value bytes
 type zeroReader byte
 
 func (z zeroReader) Read(p []byte) (n int, err error) {
