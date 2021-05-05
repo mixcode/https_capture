@@ -55,15 +55,18 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 		delete(session, sessionId)
 		mutex.Unlock()
 
-		// Print the connection
-		writef("%s [%d] end %s %s\n", timestamp(), sessionId, conn.Req.Method, conn.Req.URL.String())
+		log := newLog()
+		defer log.flush()
 
-		writef("\t==== Req header ====\n")
+		// Print the connection
+		log.writef("%s [%d] end %s %s\n", timestamp(), sessionId, conn.Req.Method, conn.Req.URL.String())
+
+		log.writef("\t==== Req header ====\n")
 		for k, v := range conn.Req.Header {
-			writef("\t\t%s: %v\n", k, v)
+			log.writef("\t\t%s: %v\n", k, v)
 		}
 		if conn.ReqBody.Size > 0 {
-			writef("\t---- Req body ----\n")
+			log.writef("\t---- Req body ----\n")
 			contentType := ""
 			ct := conn.Req.Header["Content-Type"]
 			if len(ct) > 0 {
@@ -75,8 +78,8 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 				_, _, ext, isText, _ = mediaType(contentType)
 			}
 
-			if logPostInline && isText {
-				writef("\t\t%s\n", string(conn.ReqBody.Buffer[:conn.ReqBody.Size]))
+			if logPostInlineAll || (logPostInline && isText) {
+				log.writef("\t\t%s\n", string(conn.ReqBody.Buffer[:conn.ReqBody.Size]))
 			} else {
 				if ext == "" {
 					ext = ".bin"
@@ -86,13 +89,13 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 				if err != nil {
 					return
 				}
-				writef("\t\t(saved to %s)\n", filename)
+				log.writef("\t\t(saved to %s)\n", filename)
 			}
 		}
 
-		writef("\t==== Resp header ====\n")
+		log.writef("\t==== Resp header ====\n")
 		for k, v := range conn.Resp.Header {
-			writef("\t\t%s: %v\n", k, v)
+			log.writef("\t\t%s: %v\n", k, v)
 		}
 
 		// Write the result body to a file
@@ -140,17 +143,17 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 				}
 			}
 
-			writef("\t---- Resp body ----\n")
-			writef("\t\t(saved to %s)\n", shortname)
+			log.writef("\t---- Resp body ----\n")
+			log.writef("\t\t(saved to %s)\n", shortname)
 
 			err = os.WriteFile(filepath.Join(captureDir, shortname), conn.RespBody.Buffer[:conn.RespBody.Size], 0644)
 			if err != nil {
 				return
 			}
-			//writef("\t---- Resp body [%s] ----\n", contentType)
-			//writef("\t%s\n", string(conn.RespBody.Buffer[:conn.RespBody.Size]))
+			//log.writef("\t---- Resp body [%s] ----\n", contentType)
+			//log.writef("\t%s\n", string(conn.RespBody.Buffer[:conn.RespBody.Size]))
 		}
-		writef("\n")
+		log.writef("\n")
 	}
 }
 
@@ -169,7 +172,9 @@ func reqHandler(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.
 	session[sessionId] = &conn
 	mutex.Unlock()
 
-	writef("%s [%d] start %s %s\n", timestamp(), sessionId, conn.Req.Method, conn.Req.URL.String())
+	log := newLog()
+	defer log.flush()
+	log.writef("%s [%d] start %s %s\n", timestamp(), sessionId, conn.Req.Method, conn.Req.URL.String())
 	return newReq, nil
 }
 
@@ -195,6 +200,7 @@ func timestamp() string {
 	return time.Now().Format(time.RFC3339)
 }
 
+/*
 // write a message to the logfile
 func writef(format string, arg ...interface{}) {
 	fmt.Fprintf(listWriter, format, arg...)
@@ -202,3 +208,4 @@ func writef(format string, arg ...interface{}) {
 		fmt.Printf(format, arg...)
 	}
 }
+*/

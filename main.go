@@ -23,9 +23,9 @@ import (
 )
 
 const (
-	defaultListenAddr   = ":38080"
-	defaultCaptureDir   = "./captured"
-	defaultListFileName = "log.txt"
+	defaultListenAddr  = ":38080"
+	defaultCaptureDir  = "./captured"
+	defaultLogFileName = "log.txt"
 
 	filenameMaxLen = 32
 )
@@ -36,13 +36,14 @@ var (
 	listenAddress  string = defaultListenAddr
 	useBuiltinCert        = false
 
-	captureDir   string = defaultCaptureDir
-	listFileName string = filepath.Join(captureDir, defaultListFileName)
+	captureDir  string = defaultCaptureDir
+	logFileName string = filepath.Join(captureDir, defaultLogFileName)
 
-	logPostInline   = false
-	cleanCaptureDir = false
-	tee             = false
-	verbose         = false
+	logPostInline      = false
+	logPostInlineForce = false
+	cleanCaptureDir    = false
+	tee                = false
+	verbose            = false
 
 	force = false
 
@@ -53,9 +54,6 @@ var (
 	// cert/key
 	rootCert   *x509.Certificate
 	privateKey interface{}
-
-	// log writer
-	listWriter io.Writer
 )
 
 // ==============================
@@ -65,9 +63,9 @@ var (
 //
 func run() (err error) {
 
+	// prepare the cert
 	rootCert = defaultRootCA
 	privateKey = defaultKey
-
 	if useBuiltinCert {
 		// use the built-in cert
 		if verbose {
@@ -126,6 +124,7 @@ func run() (err error) {
 		}
 	}
 
+	// prepare the capturing directory
 	err = os.MkdirAll(captureDir, 0755)
 	if err != nil {
 		return
@@ -134,10 +133,11 @@ func run() (err error) {
 		emptyDir(captureDir)
 	}
 
-	if listFileName == "-" {
-		listWriter = os.Stdout
+	// prepare the logfile
+	if logFileName == "-" {
+		logWriter = os.Stdout
 	} else {
-		w, e := os.Create(listFileName)
+		w, e := os.Create(logFileName)
 		if e != nil {
 			err = e
 			return
@@ -148,15 +148,16 @@ func run() (err error) {
 				err = e
 			}
 		}()
-		listWriter = w
+		logWriter = w
 	}
+	startLog()
+	defer stopLog()
 
+	// build a TLS cert
 	if rootCert == nil {
 		err = fmt.Errorf("root cert is nil")
 		return
 	}
-
-	// build a TLS cert
 	var cert tls.Certificate
 	cert.Certificate = append(cert.Certificate, rootCert.Raw)
 	cert.PrivateKey = privateKey
@@ -349,12 +350,13 @@ func main() {
 	// -dir: log dir
 	flag.StringVar(&captureDir, "dir", defaultCaptureDir, "directory to store the captured files")
 	// -log: log list file
-	flag.StringVar(&listFileName, "log", listFileName, "filename to store the connections log")
+	flag.StringVar(&logFileName, "log", logFileName, "filename to store the connections log")
 	// -c:  clear the log dir on start
 	flag.BoolVar(&cleanCaptureDir, "c", cleanCaptureDir, "clear the capture directory on start")
 
 	// -inline: log POST bodies directly into the log list file
 	flag.BoolVar(&logPostInline, "p", logPostInline, "log POST request bodies directly into the logfile")
+	flag.BoolVar(&logPostInlineForce, "pall", logPostInlineForce, "log POST request bodies directly into the logfile, even if it is known as a binary")
 
 	// -tee
 	flag.BoolVar(&tee, "tee", tee, "print logs to stdout along with the logfile")
