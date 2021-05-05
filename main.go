@@ -323,7 +323,8 @@ func emptyDir(path string) (err error) {
 func flagUsage() {
 	o := flag.CommandLine.Output()
 
-	fmt.Fprintf(o, "%s: a HTTP(s) proxy that write communications to files\n", os.Args[0])
+	fmt.Fprintf(o, "\nA HTTP(s) capturing proxy that write contents of HTTP(s) to files.\n")
+	fmt.Fprintf(o, "\t2021 github.com/mixcode\n\n")
 
 	fmt.Fprintf(o, "Usage: %s [options] RootCA_filename_pem [key_filename_pem]\n\nOptions:\n", os.Args[0])
 	flag.PrintDefaults()
@@ -352,7 +353,7 @@ func main() {
 	flag.BoolVar(&cleanCaptureDir, "c", cleanCaptureDir, "clear the capture directory on start")
 
 	// -inline: log POST bodies directly into the log list file
-	flag.BoolVar(&logPostInline, "inline", logPostInline, "log POST bodies directly into logfile")
+	flag.BoolVar(&logPostInline, "p", logPostInline, "log POST bodies directly into logfile")
 
 	// -tee
 	flag.BoolVar(&tee, "tee", tee, "print logs to stdout along with the logfile")
@@ -361,15 +362,15 @@ func main() {
 	flag.BoolVar(&verbose, "v", verbose, "verbose; print internal proxy log to stdout")
 
 	// -f
-	flag.BoolVar(&force, "f", force, "force; overwrite existing files for -generate-cert")
+	flag.BoolVar(&force, "f", force, "force; overwrite existing file on -generate-cert")
 
 	// -generate-cert : create a CA cert and save it to a file
 	var genCertFlag = false
-	flag.BoolVar(&genCertFlag, "generate-cert", false, "Generate a self-signed Root CA cert using built-in INSECURE default key and write it to given filename")
+	flag.BoolVar(&genCertFlag, "generate-cert", false, "Generate a self-signed Root CA cert using built-in (insecure) default key and write it to given filename")
 
 	// -print-builtin-cert : print the default built-in CA cert to a file
 	var printCertFlag = false
-	flag.BoolVar(&printCertFlag, "print-builtin-cert", false, "Write the built-in default INSECURE Root CA to a file")
+	flag.BoolVar(&printCertFlag, "print-builtin-cert", false, "Write the built-in default insecure Root CA to a file")
 
 	flag.Parse()
 

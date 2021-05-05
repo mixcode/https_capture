@@ -1,5 +1,5 @@
 
-# https\_capture: A tiny HTTPS capturing MITM proxy utility
+# https\_capture: A HTTP(S) capturing MITM proxy that write contents to files
 
 `https_capture` is a tiny HTTP/HTTPS MITM proxy utility to log, capture and save HTTP(s) communications to files.
 
