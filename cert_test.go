@@ -65,6 +65,8 @@ func TestPEM(t *testing.T) {
 }
 
 func TestRootCAPEM(t *testing.T) {
+
+	// PEM encoding of the default root cert
 	var CA_CERT = []byte(`-----BEGIN CERTIFICATE-----
 MIIDfTCCAt6gAwIBAgIBATAKBggqhkjOPQQDBDCB1TELMAkGA1UEBhMCWloxFjAU
 BgNVBAgTDUludmFsaWQgU3RhdGUxFTATBgNVBAcTDEludmFsaWQgQ2l0eTEfMB0G

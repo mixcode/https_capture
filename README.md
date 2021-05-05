@@ -17,7 +17,7 @@ go install github.com/mixcode/https_capture@latest
 
 A quick example:
 ```
-./https_capture -addr=:38080 -dir=./captured -log=log.txt -t -e
+$ https_capture -addr=:38080 -dir=./captured -log=log.txt -t -e
 ```
 
 Run the program, then set your web proxy to the machine's `:38080` port. Then the HTTP requests will be stored in the `./captured` directory. The `-t` makes the log echoed to STDOUT. The '-e' will erase the capturing directory when starting.

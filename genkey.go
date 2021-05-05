@@ -8,6 +8,7 @@ import (
 	"crypto/elliptic"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"math/big"
 	"os"
@@ -17,8 +18,8 @@ import (
 
 const (
 	gendir   = "./generated"
-	keyfile  = "p521privatekey.der"
-	certfile = "rootcert.der"
+	keyfile  = "p521privatekey"
+	certfile = "rootcert"
 )
 
 // a dummy reader with zero-bytes
@@ -105,13 +106,20 @@ func run() (err error) {
 		return
 	}
 
-	// write key
-	err = os.MkdirAll(gendir, 0755)
+	// write the key in binary DER form
+	err = os.MkdirAll(gendir, 0700)
 	if err != nil {
 		return
 	}
 	fkey := filepath.Join(gendir, keyfile)
-	err = os.WriteFile(fkey, b, 0644)
+	err = os.WriteFile(fkey+".der", b, 0600)
+	if err != nil {
+		return
+	}
+	// note: PEM key is not actually used but generated for convenience
+	pb := &pem.Block{Type: "PRIVATE KEY", Bytes: b}
+	pembytes := pem.EncodeToMemory(pb)
+	err = os.WriteFile(fkey+".pem", pembytes, 0600)
 	if err != nil {
 		return
 	}
@@ -121,8 +129,16 @@ func run() (err error) {
 	if err != nil {
 		return
 	}
+	// write the cert in binary DER form
 	fcert := filepath.Join(gendir, certfile)
-	err = os.WriteFile(fcert, cert.Raw, 0644)
+	err = os.WriteFile(fcert+".der", cert.Raw, 0600)
+	if err != nil {
+		return
+	}
+	// note: PEM cert is not actually used but generated for convenience
+	pb = &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}
+	pembytes = pem.EncodeToMemory(pb)
+	err = os.WriteFile(fcert+".pem", pembytes, 0600)
 	if err != nil {
 		return
 	}

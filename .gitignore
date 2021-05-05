@@ -13,6 +13,11 @@
 
 .*
 _*
+
+t.*
+*.cer
+*.crt
+
 https_capture
 
 # Dependency directories (remove the comment below to include it)
