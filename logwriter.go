@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 )
 
 var (
@@ -48,6 +49,9 @@ func startLog() {
 			if err != nil {
 				ok = false
 				logErrorChan <- err
+			}
+			if tee {
+				os.Stdout.Write(buf)
 			}
 		}
 	}()
