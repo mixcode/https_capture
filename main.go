@@ -137,8 +137,6 @@ func run() (err error) {
 	if listFileName == "-" {
 		listWriter = os.Stdout
 	} else {
-		//fn := filepath.Join(captureDir, listFileName)
-		//w, e := os.Create(fn)
 		w, e := os.Create(listFileName)
 		if e != nil {
 			err = e
@@ -175,7 +173,6 @@ func run() (err error) {
 		return connectAction, host
 	}
 	proxy.OnRequest().HandleConnect(connectHandler)
-	//proxy.OnRequest().HandleConnect(goproxy.AlwaysMitm)
 
 	// prepare request and response handlers
 	proxy.OnRequest().DoFunc(reqHandler)
@@ -281,7 +278,7 @@ func promptOverwriteFile(filename string) bool {
 	if os.IsNotExist(e) {
 		return true
 	}
-	fmt.Printf("File %s exists. Overwite? [y/N] ", filename)
+	fmt.Printf("File %s exists. Overwrite? [y/N] ", filename)
 	return promptYN(false)
 }
 

@@ -42,7 +42,7 @@ type Connection struct {
 func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 
 	//
-	// This sub-function is called when a NTTP(s) connection has closed.
+	// This sub-function is called when a HTTP(s) connection has closed.
 	// session[sessionId] contains complete history of a connection
 	//
 	return func(err error) {
