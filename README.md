@@ -13,7 +13,10 @@ Then do the following.
 go install github.com/mixcode/https_capture@latest
 ```
 
-### Create a dummy Root CA certificate to peek HTTPS communications
+Or, you may pull the source and do `go generate && go build`.
+
+
+### create a dummy Root CA certificate to peek HTTPS communications
 
 To peek HTTPS communications, you have to tell your web client that https\_capture proxy is trustable. You can do it by creating and installing a self-signed (insecure) Root CA certificate of https\_proxy to the web client.
 
@@ -25,7 +28,7 @@ https_capture --generate-cert my_insecure_root_ca.cer
 You have to install the generated cert (in this case `my_insecure_root_ca.cer`) to your web client or OS. Refer to the client or OS manuals for details.
 
 
-### Start the proxy server
+### start the proxy server
 
 A quick example:
 ```
@@ -35,6 +38,11 @@ $ https_capture -addr=:38080 -dir=./captured -log=log.txt -c -tee my_insecure_ro
 Run the proxy with the generated cert on the machine's `:38080` port. The HTTP requests will be stored in the `./captured` directory. The `-tee` makes the log echoed to STDOUT. The `-c` will clear the capturing directory when starting.
 
 To see available options, do `https_capture --help`.
+
+
+### start sending data through the proxy
+
+Modify the HTTP proxy setting of your web client (or OS) to the proxy program just started (in the example above, `localhost:38080`). If everything is OK, then the log file and captured files will appear on the capturing directory once you visit some web pages.
 
 
 ## Connection log
