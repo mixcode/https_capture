@@ -8,6 +8,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
@@ -16,7 +17,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"sync"
+	"syscall"
 
 	//"github.com/elazarl/goproxy"
 	"github.com/mixcode/goproxy" // a clone of elazarl/goproxy with fixes for TLS SNI
@@ -39,11 +43,11 @@ var (
 	captureDir  string = defaultCaptureDir
 	logFileName string = filepath.Join(captureDir, defaultLogFileName)
 
-	logPostInline      = false
-	logPostInlineForce = false
-	cleanCaptureDir    = false
-	tee                = false
-	verbose            = false
+	logPostInline    = false
+	logPostInlineAll = false
+	cleanCaptureDir  = false
+	tee              = false
+	verbose          = false
 
 	force = false
 
@@ -162,11 +166,10 @@ func run() (err error) {
 	cert.Certificate = append(cert.Certificate, rootCert.Raw)
 	cert.PrivateKey = privateKey
 
-	// start proxy
+	// prepare the proxy engine
 	proxy := goproxy.NewProxyHttpServer()
 
-	// prepare a new connection handler
-	connectAction := &goproxy.ConnectAction{
+	connectAction := &goproxy.ConnectAction{ // new connection handler
 		Action:    goproxy.ConnectMitm,
 		TLSConfig: goproxy.TLSConfigFromCA(&cert),
 	}
@@ -175,23 +178,49 @@ func run() (err error) {
 	}
 	proxy.OnRequest().HandleConnect(connectHandler)
 
-	// prepare request and response handlers
-	proxy.OnRequest().DoFunc(reqHandler)
-	proxy.OnResponse().DoFunc(respHandler)
+	proxy.OnRequest().DoFunc(reqHandler)   // http request handler
+	proxy.OnResponse().DoFunc(respHandler) // http response handler
 
-	// set verbose flag of proxy engine
 	if verbose {
 		proxy.Verbose = goproxy.LOGLEVEL_VERBOSE
 	} else {
 		proxy.Verbose = goproxy.LOGLEVEL_NONE
 	}
 
+	// start the proxy engine
+	var wg sync.WaitGroup
+	server := &http.Server{Addr: listenAddress, Handler: proxy}
+	var e error
+	go func() {
+		wg.Add(1)
+		defer wg.Done()
+		e = server.ListenAndServe()
+		if e == http.ErrServerClosed {
+			e = nil
+		}
+	}()
 	if verbose {
 		fmt.Println("proxy started")
 	}
 
-	// TODO: handle signal
-	return http.ListenAndServe(listenAddress, proxy)
+	// wait for an OS signal
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGHUP)
+
+	// terminate the proxy
+	if verbose {
+		fmt.Println("terminating proxy...")
+	}
+	err = server.Shutdown(context.TODO())
+	wg.Wait()
+	if err == nil {
+		err = e
+	}
+	if verbose {
+		fmt.Println("proxy terminated")
+	}
+
+	return
 }
 
 // main function 2
@@ -328,7 +357,7 @@ func flagUsage() {
 	fmt.Fprintf(o, "\nA HTTP(s) capturing proxy that write contents of HTTP(s) to files.\n")
 	fmt.Fprintf(o, "\t2021 github.com/mixcode\n\n")
 
-	fmt.Fprintf(o, "Usage: %s [options] RootCA_filename_pem [key_filename_pem]\n\nOptions:\n", os.Args[0])
+	fmt.Fprintf(o, "Usage: %s [options] RootCA_pem_file [privkey_pem_file]\n\nOptions:\n", os.Args[0])
 	flag.PrintDefaults()
 }
 
@@ -356,7 +385,7 @@ func main() {
 
 	// -inline: log POST bodies directly into the log list file
 	flag.BoolVar(&logPostInline, "p", logPostInline, "log POST request bodies directly into the logfile")
-	flag.BoolVar(&logPostInlineForce, "pall", logPostInlineForce, "log POST request bodies directly into the logfile, even if it is known as a binary")
+	flag.BoolVar(&logPostInlineAll, "pall", logPostInlineAll, "log POST request bodies directly into the logfile, even if it is known as a binary")
 
 	// -tee
 	flag.BoolVar(&tee, "tee", tee, "print logs to stdout along with the logfile")
