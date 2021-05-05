@@ -3,7 +3,7 @@ package main
 //
 // HTTP request, response, and close handlers
 //
-// Modify the
+// If you want to customize the capturing data, you may modify httpCloseCallback() in this file.
 //
 // github.com/mixcode, 2021-04
 //
@@ -29,11 +29,13 @@ var (
 	session = make(map[int64]*Connection)
 )
 
+// A captured HTTP connection
 type Connection struct {
-	Req      *http.Request
-	ReqBody  *CaptureReadCloser
-	Resp     *http.Response
-	RespBody *CaptureReadCloser
+	Req     *http.Request      // HTTP request
+	ReqBody *CaptureReadCloser // HTTP request body stream
+
+	Resp     *http.Response     // HTTP response
+	RespBody *CaptureReadCloser // HTTP response body stream
 }
 
 // HTTP connection closed; write the result to file
@@ -53,7 +55,7 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 		delete(session, sessionId)
 		mutex.Unlock()
 
-		// Print connection
+		// Print the connection
 		writef("%s [%d] end %s %s\n", timestamp(), sessionId, conn.Req.Method, conn.Req.URL.String())
 
 		writef("\t==== Req header ====\n")
@@ -89,7 +91,7 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			writef("\t\t%s: %v\n", k, v)
 		}
 
-		// Write result body to file
+		// Write the result body to a file
 		if conn.RespBody.Size > 0 {
 
 			// determine file name and type
@@ -136,7 +138,6 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 
 			writef("\t---- Resp body ----\n")
 			writef("\t\t(saved to: [%s])\n", shortname)
-			//writef("\t\(filename: [%s])\n", outfilename)
 
 			err = os.WriteFile(filepath.Join(captureDir, shortname), conn.RespBody.Buffer[:conn.RespBody.Size], 0644)
 			if err != nil {
@@ -190,7 +191,7 @@ func timestamp() string {
 	return time.Now().Format(time.RFC3339)
 }
 
-// write message to the logfile
+// write a message to the logfile
 func writef(format string, arg ...interface{}) {
 	fmt.Fprintf(listWriter, format, arg...)
 	if tee {

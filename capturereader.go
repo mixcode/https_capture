@@ -1,11 +1,10 @@
-//package httpscapture
 package main
 
 import (
 	"io"
 )
 
-// CaptureReader captures a io.Reader that captures all input data to internal Buffer
+// CaptureReader is a io.Reader that captures all input data to a memory buffer
 type CaptureReader struct {
 	R      io.Reader
 	Buffer []byte
@@ -27,6 +26,7 @@ func (b *CaptureReader) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
+// CaptureReadCloser is a io.ReaderCloser for CaptureReader
 type CaptureReadCloser struct {
 	CaptureReader
 	C       io.Closer
@@ -34,7 +34,6 @@ type CaptureReadCloser struct {
 	onClose func(error)
 }
 
-// CaptureReadCloser is a io.ReaderCloser for CaptureReader
 func NewCaptureReadCloserCallback(r io.ReadCloser, onClose func(error)) *CaptureReadCloser {
 	return &CaptureReadCloser{CaptureReader: CaptureReader{R: r, Buffer: make([]byte, 0), Size: 0}, C: r, Closed: false, onClose: onClose}
 }
