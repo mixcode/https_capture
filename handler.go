@@ -125,7 +125,13 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			outfilename = filebody + ext
 			shortname := outfilename
 			if len(shortname) > filenameMaxLen {
-				shortname = shortname[:filenameMaxLen-len(ext)] + ext
+				l := len(ext)
+				if l > filenameMaxLen {
+					// a long filename starts with a dot
+					shortname = shortname[:filenameMaxLen]
+				} else {
+					shortname = shortname[:filenameMaxLen-l] + ext
+				}
 			}
 
 			writef("\t---- Resp body ----\n")
