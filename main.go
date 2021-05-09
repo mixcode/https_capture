@@ -58,6 +58,9 @@ var (
 	// cert/key
 	rootCert   *x509.Certificate
 	privateKey interface{}
+
+	// error handling
+	chError = make(chan error, 1)
 )
 
 // ==============================
@@ -65,7 +68,7 @@ var (
 
 // main function 1
 //
-func run() (err error) {
+func runProxy() (err error) {
 
 	// prepare the cert
 	rootCert = defaultRootCA
@@ -123,7 +126,9 @@ func run() (err error) {
 				if err != nil {
 					return
 				}
-				fmt.Printf("A Private key is also read from the cert file\n")
+				if verbose {
+					fmt.Printf("A Private key is also read from the cert file\n")
+				}
 			}
 		}
 	}
@@ -190,31 +195,37 @@ func run() (err error) {
 	// start the proxy engine
 	var wg sync.WaitGroup
 	server := &http.Server{Addr: listenAddress, Handler: proxy}
-	var e error
+
 	go func() {
 		wg.Add(1)
 		defer wg.Done()
-		e = server.ListenAndServe()
+		e := server.ListenAndServe()
 		if e == http.ErrServerClosed {
 			e = nil
 		}
+		chError <- e	// send a nil error
 	}()
 	if verbose {
 		fmt.Println("proxy started")
 	}
 
 	// wait for an OS signal
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGHUP)
+	chSignal := make(chan os.Signal, 1)
+	signal.Notify(chSignal, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGHUP)
 
 	select {
-	case s := <-sigChan: // a signal received
+	case s := <-chSignal: // a signal received
 		if verbose {
-			fmt.Printf("received a OS signal (%v)\n", s)
+			fmt.Printf("received an OS signal (%v)\n", s)
 		}
 
-	case e := <-logErrorChan: // log write failed
-		err = e
+	case e := <-chError: // some error
+		if e != nil {
+			err = e
+			if verbose {
+				fmt.Printf("An error occured: %v\n", e)
+			}
+		}
 	}
 
 	// terminate the proxy
@@ -223,9 +234,6 @@ func run() (err error) {
 	}
 	err = server.Shutdown(context.TODO())
 	wg.Wait()
-	if err == nil {
-		err = e
-	}
 	if verbose {
 		fmt.Println("proxy terminated")
 	}
@@ -361,24 +369,22 @@ func emptyDir(path string) (err error) {
 // program startup
 //=================================
 
-func flagUsage() {
-	o := flag.CommandLine.Output()
-
-	fmt.Fprintf(o, "\nA HTTP(s) capturing proxy that write contents of HTTP(s) to files.\n")
-	fmt.Fprintf(o, "\t2021 github.com/mixcode\n\n")
-
-	fmt.Fprintf(o, "Usage: %s [options] RootCA_pem_file [privkey_pem_file]\n\nOptions:\n", os.Args[0])
-	flag.PrintDefaults()
-}
-
 func main() {
 
 	//
-	// Command-line options
+	// command-line options
 	//
 
 	// help text
-	flag.Usage = flagUsage
+	flag.Usage = func() {
+		o := flag.CommandLine.Output()
+
+		fmt.Fprintf(o, "\nA HTTP(s) capturing proxy that write contents of HTTP(s) to files.\n")
+		fmt.Fprintf(o, "\t2021 github.com/mixcode\n\n")
+
+		fmt.Fprintf(o, "Usage: %s [options] RootCA_pem_file [privkey_pem_file]\n\nOptions:\n", os.Args[0])
+		flag.PrintDefaults()
+	}
 
 	// -addr: proxy listen address
 	flag.StringVar(&listenAddress, "addr", defaultListenAddr, "proxy listen address")
@@ -418,6 +424,7 @@ func main() {
 
 	certFile, keyFile = flag.Arg(0), flag.Arg(1)
 
+	// main function
 	var err error
 	if genCertFlag {
 		// generate a new cert
@@ -426,8 +433,8 @@ func main() {
 		// print the built-in cert
 		err = printCert()
 	} else {
-		// main
-		err = run()
+		// run proxy
+		err = runProxy()
 	}
 
 	if err != nil {

@@ -8,9 +8,8 @@ import (
 )
 
 var (
-	logWriter     io.Writer
-	logBufferChan = make(chan []byte, 64)
-	logErrorChan  = make(chan error)
+	logWriter   io.Writer
+	chLogBuffer = make(chan []byte, 64)
 )
 
 type log struct {
@@ -33,7 +32,7 @@ func (l *log) flush() {
 	buf := l.b.Bytes()
 	if len(buf) > 0 {
 		go func() {
-			logBufferChan <- buf
+			chLogBuffer <- buf
 		}()
 	}
 }
@@ -41,14 +40,14 @@ func (l *log) flush() {
 func startLog() {
 	go func() {
 		ok := true
-		for buf := range logBufferChan {
+		for buf := range chLogBuffer {
 			if !ok {
 				continue
 			}
 			_, err := logWriter.Write(buf)
 			if err != nil {
 				ok = false
-				logErrorChan <- err
+				chError <- err
 			}
 			if tee {
 				os.Stdout.Write(buf)
@@ -58,5 +57,5 @@ func startLog() {
 }
 
 func stopLog() {
-	close(logBufferChan)
+	close(chLogBuffer)
 }
