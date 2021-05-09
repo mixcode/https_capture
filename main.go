@@ -43,6 +43,7 @@ var (
 	captureDir  string = defaultCaptureDir
 	logFileName string = filepath.Join(captureDir, defaultLogFileName)
 
+	rawPostForm      = false // print x-www-form-urlencoded in raw querystring
 	logPostInline    = false
 	logPostInlineAll = false
 	cleanCaptureDir  = false
@@ -203,7 +204,7 @@ func runProxy() (err error) {
 		if e == http.ErrServerClosed {
 			e = nil
 		}
-		chError <- e	// send a nil error
+		chError <- e // send a nil error
 	}()
 	if verbose {
 		fmt.Println("proxy started")
@@ -399,9 +400,12 @@ func main() {
 	// -c:  clear the log dir on start
 	flag.BoolVar(&cleanCaptureDir, "c", cleanCaptureDir, "clear the capture directory on start")
 
-	// -inline: log POST bodies directly into the log list file
+	// -p: log POST bodies directly into the log list file
 	flag.BoolVar(&logPostInline, "p", logPostInline, "log POST request bodies directly into the logfile")
 	flag.BoolVar(&logPostInlineAll, "pall", logPostInlineAll, "log POST request bodies directly into the logfile, even if it is known as a binary")
+
+	// -rawform: log x-www-form-urlencoded data as raw query strings
+	flag.BoolVar(&rawPostForm, "rawform", rawPostForm, "log x-www-form-urlencoded forms in raw query string")
 
 	// -tee
 	flag.BoolVar(&tee, "tee", tee, "print logs to stdout along with the logfile")

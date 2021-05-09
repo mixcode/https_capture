@@ -9,10 +9,12 @@ package main
 //
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -45,6 +47,51 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 	// This sub-function is called when a HTTP(s) connection has closed.
 	// session[sessionId] contains complete history of a connection
 	//
+
+	logFunc := func(l *log, isText bool, contentType, filename string, body []byte, indent string) (savedToFile bool, err error) {
+		if logPostInlineAll || (logPostInline && isText) {
+			savedToFile = false
+			s := string(body)
+			done := false
+			if contentType == "application/x-www-form-urlencoded" && rawPostForm == false {
+				// form-urlencoded
+				values, e := url.ParseQuery(s)
+				if e == nil {
+					for k, v := range values {
+						l.writef("%s%s=%s\n", indent, k, v)
+					}
+					done = true
+				} else {
+					if verbose {
+						fmt.Printf("form POST data is not a http query string")
+					}
+				}
+			}
+			if !done {
+				l.writef("%s%s\n", indent, s)
+				done = true
+			}
+		} else {
+			savedToFile = true
+			if contentType == "application/x-www-form-urlencoded" && rawPostForm == false {
+				// form-urlencoded
+				values, e := url.ParseQuery(string(body))
+				if e == nil {
+					var buf bytes.Buffer
+					for k, v := range values {
+						_, err = fmt.Fprintf(&buf, "%s=%s\n", k, v)
+						if err != nil {
+							return
+						}
+					}
+					body = buf.Bytes()
+				}
+			}
+			err = os.WriteFile(filename, body, 0644)
+		}
+		return
+	}
+
 	return func(err error) {
 		mutex.Lock()
 		s, ok := session[sessionId]
@@ -55,18 +102,18 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 		delete(session, sessionId)
 		mutex.Unlock()
 
-		log := newLog()
-		defer log.flush()
+		l := newLog()
+		defer l.flush()
 
 		// Print the connection
-		log.writef("%s [%d] end %s %s\n", timestamp(), sessionId, conn.Req.Method, conn.Req.URL.String())
+		l.writef("%s [%d] end %s %s\n", timestamp(), sessionId, conn.Req.Method, conn.Req.URL.String())
 
-		log.writef("\t==== Req header ====\n")
+		l.writef("\t==== Req header ====\n")
 		for k, v := range conn.Req.Header {
-			log.writef("\t\t%s: %v\n", k, v)
+			l.writef("\t\t%s: %v\n", k, v)
 		}
 		if conn.ReqBody.Size > 0 {
-			log.writef("\t---- Req body ----\n")
+			l.writef("\t---- Req body ----\n")
 			contentType := ""
 			ct := conn.Req.Header["Content-Type"]
 			if len(ct) > 0 {
@@ -77,29 +124,80 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			if contentType != "" {
 				_, _, ext, isText, _ = mediaType(contentType)
 			}
+			if ext == "" {
+				ext = ".bin"
+			}
+			fname := fmt.Sprintf("%06d_a_%s%s", sessionId, conn.Req.Method, ext)
+			fpath := filepath.Join(captureDir, fname)
 
+			saved := false
+			saved, err = logFunc(l, isText, contentType, fpath, conn.ReqBody.Buffer[:conn.ReqBody.Size], "\t\t")
+			if err != nil {
+				return
+			}
+			if saved {
+				l.writef("\t\t(saved to %s)\n", fname)
+			}
+
+			/*
+			reqBody := conn.ReqBody.Buffer[:conn.ReqBody.Size]
 			if logPostInlineAll || (logPostInline && isText) {
-				log.writef("\t\t%s\n", string(conn.ReqBody.Buffer[:conn.ReqBody.Size]))
+				s := string(reqBody)
+				done := false
+				if contentType == "application/x-www-form-urlencoded" && rawPostForm == false {
+					// form-urlencoded
+					values, e := url.ParseQuery(s)
+					if e == nil {
+						for k, v := range values {
+							l.writef("\t\t%s=%s\n", k, v)
+						}
+						done = true
+					}
+				}
+				if !done {
+					l.writef("\t\t%s\n", s)
+					done = true
+				}
 			} else {
 				if ext == "" {
 					ext = ".bin"
 				}
-				filename := fmt.Sprintf("%06d_a_request%s", sessionId, ext)
-				err = os.WriteFile(filepath.Join(captureDir, filename), conn.ReqBody.Buffer[:conn.ReqBody.Size], 0644)
+				fname := fmt.Sprintf("%06d_a_%s%s", sessionId, conn.Req.Method, ext)
+				fpath := filepath.Join(captureDir, fname)
+
+				if contentType == "application/x-www-form-urlencoded" && rawPostForm == false {
+					// form-urlencoded
+					values, e := url.ParseQuery(string(reqBody))
+					if e == nil {
+						var buf bytes.Buffer
+						for k, v := range values {
+							_, err = fmt.Fprintf(&buf, "%s=%s\n", k, v)
+							if err != nil {
+								return
+							}
+						}
+						reqBody = buf.Bytes()
+					}
+				}
+
+				err = os.WriteFile(fpath, reqBody, 0644)
 				if err != nil {
 					return
 				}
-				log.writef("\t\t(saved to %s)\n", filename)
+				l.writef("\t\t(saved to %s)\n", fname)
 			}
+			*/
 		}
 
-		log.writef("\t==== Resp header ====\n")
+		l.writef("\t==== Resp header ====\n")
 		for k, v := range conn.Resp.Header {
-			log.writef("\t\t%s: %v\n", k, v)
+			l.writef("\t\t%s: %v\n", k, v)
 		}
 
 		// Write the result body to a file
 		if conn.RespBody.Size > 0 {
+
+			l.writef("\t---- Resp body ----\n")
 
 			// determine file name and type
 			contentType := ""
@@ -112,7 +210,6 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			if disp, ok := conn.Resp.Header["Content-Disposition"]; ok {
 				_, param, _ := mime.ParseMediaType(disp[0])
 				outfilename = param["filename"]
-
 			}
 			if outfilename == "" {
 				_, outfilename = path.Split(conn.Req.URL.EscapedPath())
@@ -122,15 +219,17 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			}
 			outfilename = fmt.Sprintf("%06d_b_%s", sessionId, outfilename)
 
+			isText := true
 			ext := path.Ext(outfilename)
 			filebody := outfilename[:len(outfilename)-len(ext)]
 			if ext == "" {
-				_, _, ext, _, _ = mediaType(contentType)
+				_, _, ext, isText, _ = mediaType(contentType)
 				if ext == "" {
 					// unknown file type
 					ext = ".bin"
 				}
 			}
+
 			outfilename = filebody + ext
 			shortname := outfilename
 			if len(shortname) > filenameMaxLen {
@@ -142,18 +241,27 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 					shortname = shortname[:filenameMaxLen-l] + ext
 				}
 			}
+			outpath := filepath.Join(captureDir, shortname)
 
-			log.writef("\t---- Resp body ----\n")
-			log.writef("\t\t(saved to %s)\n", shortname)
+			saved := false
+			saved, err = logFunc(l, isText, contentType, outpath, conn.RespBody.Buffer[:conn.RespBody.Size], "\t\t")
+			if err != nil {
+				return
+			}
+			if saved {
+				l.writef("\t\t(saved to %s)\n", shortname)
+			}
 
+			/*
 			err = os.WriteFile(filepath.Join(captureDir, shortname), conn.RespBody.Buffer[:conn.RespBody.Size], 0644)
 			if err != nil {
 				return
 			}
-			//log.writef("\t---- Resp body [%s] ----\n", contentType)
-			//log.writef("\t%s\n", string(conn.RespBody.Buffer[:conn.RespBody.Size]))
+			*/
+			//l.writef("\t---- Resp body [%s] ----\n", contentType)
+			//l.writef("\t%s\n", string(conn.RespBody.Buffer[:conn.RespBody.Size]))
 		}
-		log.writef("\n")
+		l.writef("\n")
 	}
 }
 

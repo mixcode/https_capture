@@ -10,19 +10,21 @@ var (
 	textType   = make(map[string]bool)
 
 	extensions = map[string]string{
-		"text/plain": ".txt",
-		"text/html":  ".html",
-		"image/jpeg": ".jpg",
+		"text/plain":                        ".txt",
+		"text/html":                         ".html",
+		"image/jpeg":                        ".jpg",
+		"application/x-www-form-urlencoded": ".form",
 	}
 
-	textMimeHeader = []string{
-		"text", // "text/html"
-		"xml",  // "xml/svg"
+	textMimeCategory = []string{
+		"text", // "text/plain", "text/html", ...
+		"xml",  // "xml/svg", ...
 	}
 
 	textMimeType = []string{
 		"application/json",
 		"application/javascript",
+		"application/x-www-form-urlencoded",
 	}
 )
 
@@ -51,7 +53,7 @@ func mediaType(mtype string) (mediaType string, params map[string]string, fileEx
 }
 
 func init() {
-	for _, s := range textMimeHeader {
+	for _, s := range textMimeCategory {
 		textHeader[s] = true
 	}
 	for _, s := range textMimeType {
