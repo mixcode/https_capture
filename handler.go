@@ -186,7 +186,7 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 				_, outfilename = path.Split(conn.Req.URL.EscapedPath())
 			}
 			if outfilename == "" {
-				outfilename = "unknown.bin"
+				outfilename = "unknown"
 			}
 			outfilename = fmt.Sprintf("%06d_b_%s", sessionId, outfilename)
 
