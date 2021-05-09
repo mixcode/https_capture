@@ -62,7 +62,7 @@ This is an example of captured logs.
 ```
 2021-04-28T14:55:11+09:00 [4] start GET https://www.google.com/
 2021-04-28T14:55:12+09:00 [4] end GET https://www.google.com/
-	==== Req header ====
+	==== Req: headers ====
 		Accept-Language: [en-US,en;q=0.9]
 		Upgrade-Insecure-Requests: [1]
 		User-Agent: [Mozilla/5.0 (..........)]
@@ -72,7 +72,7 @@ This is an example of captured logs.
 		Connection: [keep-alive]
 		Cache-Control: [max-age=0]
 		Cookie: [1P_JAR=2021-04-28-05; UULE=.............]
-	==== Resp header ====
+	==== Resp (200 OK): headers ====
 		Cache-Control: [private]
 		X-Xss-Protection: [0]
 		X-Frame-Options: [SAMEORIGIN]
@@ -85,8 +85,8 @@ This is an example of captured logs.
 		Server: [gws]
 		Connection: [close]
 		Date: [Wed, 28 Apr 2021 05:55:12 GMT]
-	---- Resp body ----
-		(saved to: [000004_b_unknown.bin])
+	---- Resp: body ----
+		(saved to: [000004_b_index.html])
 ```
 
 
@@ -100,7 +100,7 @@ This is an example of stored files.
 ```
 $ ls ./captured
 -rw-r--r--. 1 mixcode     44 04-28 19:39 000245_b_gn.gif
--rw-r--r--. 1 mixcode     35 04-28 19:39 000246_b_unknown.bin
+-rw-r--r--. 1 mixcode     35 04-28 19:39 000246_b_index.html
 -rw-r--r--. 1 mixcode     43 04-28 19:39 000247_b_vad.gif
 -rw-r--r--. 1 mixcode   1477 04-28 19:39 000248_a_request.bin
 -rw-r--r--. 1 mixcode    239 04-28 19:39 000248_b_yql.txt

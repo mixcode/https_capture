@@ -109,12 +109,12 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 		// Print the connection
 		l.writef("%s [%d] end %s (%s) %s\n", timestamp(), sessionId, conn.Req.Method, conn.Resp.Status, conn.Req.URL.String())
 
-		l.writef("\t==== Req header ====\n")
+		l.writef("\t==== Req: headers ====\n")
 		for k, v := range conn.Req.Header {
 			l.writef("\t\t%s: %v\n", k, v)
 		}
 		if conn.ReqBody.Size > 0 {
-			l.writef("\t---- Req body ----\n")
+			l.writef("\t---- Req: body ----\n")
 			contentType := ""
 			ct := conn.Req.Header["Content-Type"]
 			if len(ct) > 0 {
@@ -160,7 +160,7 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			}
 		}
 
-		l.writef("\t==== Resp (%s) header ====\n", conn.Resp.Status)
+		l.writef("\t==== Resp (%s): headers ====\n", conn.Resp.Status)
 		for k, v := range conn.Resp.Header {
 			l.writef("\t\t%s: %v\n", k, v)
 		}
@@ -168,7 +168,7 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 		// Write the result body to a file
 		if conn.RespBody.Size > 0 {
 
-			l.writef("\t---- Resp body ----\n")
+			l.writef("\t---- Resp: body ----\n")
 
 			// determine file name and type
 			contentType := ""
@@ -177,31 +177,42 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 				contentType = ct[0]
 			}
 
-			outfilename := ""
+			// detect filename by Content-Disposition
+			outfilename, filename_unknown := "", false
 			if disp, ok := conn.Resp.Header["Content-Disposition"]; ok {
 				_, param, _ := mime.ParseMediaType(disp[0])
 				outfilename = param["filename"]
 			}
+			// detect filename by URL path
 			if outfilename == "" {
 				_, outfilename = path.Split(conn.Req.URL.EscapedPath())
 			}
 			if outfilename == "" {
+				// cannot determine filename
+				filename_unknown = true
 				outfilename = "unknown"
 			}
-			outfilename = fmt.Sprintf("%06d_b_%s", sessionId, outfilename)
 
+			// determine file extension
 			isText := true
 			ext := path.Ext(outfilename)
 			filebody := outfilename[:len(outfilename)-len(ext)]
-			if ext == "" {
+			if ext == "" && contentType != "" {
 				_, _, ext, isText, _ = mediaType(contentType)
-				if ext == "" {
-					// unknown file type
-					ext = ".bin"
-				}
+			}
+			if ext == "" {
+				// unknown file type
+				ext = ".bin"
 			}
 
-			outfilename = filebody + ext
+			if filename_unknown && ext == ".html" {
+				outfilename = "index.html"
+			} else {
+				outfilename = filebody + ext
+			}
+			outfilename = fmt.Sprintf("%06d_b_%s", sessionId, outfilename)
+
+			// trim if the filename is too long
 			shortname := outfilename
 			if len(shortname) > filenameMaxLen {
 				l := len(ext)
@@ -215,7 +226,6 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			outpath := filepath.Join(captureDir, shortname)
 
 			body := conn.RespBody.Buffer[:conn.RespBody.Size]
-
 			// TODO: log uncompressed response?
 
 			saved := false
