@@ -10,6 +10,7 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"mime"
@@ -106,7 +107,7 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 		defer l.flush()
 
 		// Print the connection
-		l.writef("%s [%d] end %s %s\n", timestamp(), sessionId, conn.Req.Method, conn.Req.URL.String())
+		l.writef("%s [%d] end %s (%s) %s\n", timestamp(), sessionId, conn.Req.Method, conn.Resp.Status, conn.Req.URL.String())
 
 		l.writef("\t==== Req header ====\n")
 		for k, v := range conn.Req.Header {
@@ -130,66 +131,36 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			fname := fmt.Sprintf("%06d_a_%s%s", sessionId, conn.Req.Method, ext)
 			fpath := filepath.Join(captureDir, fname)
 
+			body := conn.ReqBody.Buffer[:conn.ReqBody.Size]
+
+			ce := conn.Req.Header["Content-Encoding"]
+			if len(ce) > 0 && ce[0] == "gzip" {
+				b := bytes.NewBuffer(body)
+				gz, e := gzip.NewReader(b)
+				if e != nil {
+					err = e
+					return
+				}
+				o := new(bytes.Buffer)
+				_, err = o.ReadFrom(gz)
+				gz.Close()
+				if err != nil {
+					return
+				}
+				body = o.Bytes()
+			}
+
 			saved := false
-			saved, err = logFunc(l, isText, contentType, fpath, conn.ReqBody.Buffer[:conn.ReqBody.Size], "\t\t")
+			saved, err = logFunc(l, isText, contentType, fpath, body, "\t\t")
 			if err != nil {
 				return
 			}
 			if saved {
 				l.writef("\t\t(saved to %s)\n", fname)
 			}
-
-			/*
-			reqBody := conn.ReqBody.Buffer[:conn.ReqBody.Size]
-			if logPostInlineAll || (logPostInline && isText) {
-				s := string(reqBody)
-				done := false
-				if contentType == "application/x-www-form-urlencoded" && rawPostForm == false {
-					// form-urlencoded
-					values, e := url.ParseQuery(s)
-					if e == nil {
-						for k, v := range values {
-							l.writef("\t\t%s=%s\n", k, v)
-						}
-						done = true
-					}
-				}
-				if !done {
-					l.writef("\t\t%s\n", s)
-					done = true
-				}
-			} else {
-				if ext == "" {
-					ext = ".bin"
-				}
-				fname := fmt.Sprintf("%06d_a_%s%s", sessionId, conn.Req.Method, ext)
-				fpath := filepath.Join(captureDir, fname)
-
-				if contentType == "application/x-www-form-urlencoded" && rawPostForm == false {
-					// form-urlencoded
-					values, e := url.ParseQuery(string(reqBody))
-					if e == nil {
-						var buf bytes.Buffer
-						for k, v := range values {
-							_, err = fmt.Fprintf(&buf, "%s=%s\n", k, v)
-							if err != nil {
-								return
-							}
-						}
-						reqBody = buf.Bytes()
-					}
-				}
-
-				err = os.WriteFile(fpath, reqBody, 0644)
-				if err != nil {
-					return
-				}
-				l.writef("\t\t(saved to %s)\n", fname)
-			}
-			*/
 		}
 
-		l.writef("\t==== Resp header ====\n")
+		l.writef("\t==== Resp (%s) header ====\n", conn.Resp.Status)
 		for k, v := range conn.Resp.Header {
 			l.writef("\t\t%s: %v\n", k, v)
 		}
@@ -243,23 +214,18 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			}
 			outpath := filepath.Join(captureDir, shortname)
 
+			body := conn.RespBody.Buffer[:conn.RespBody.Size]
+
+			// TODO: log uncompressed response?
+
 			saved := false
-			saved, err = logFunc(l, isText, contentType, outpath, conn.RespBody.Buffer[:conn.RespBody.Size], "\t\t")
+			saved, err = logFunc(l, isText, contentType, outpath, body, "\t\t")
 			if err != nil {
 				return
 			}
 			if saved {
 				l.writef("\t\t(saved to %s)\n", shortname)
 			}
-
-			/*
-			err = os.WriteFile(filepath.Join(captureDir, shortname), conn.RespBody.Buffer[:conn.RespBody.Size], 0644)
-			if err != nil {
-				return
-			}
-			*/
-			//l.writef("\t---- Resp body [%s] ----\n", contentType)
-			//l.writef("\t%s\n", string(conn.RespBody.Buffer[:conn.RespBody.Size]))
 		}
 		l.writef("\n")
 	}

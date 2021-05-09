@@ -46,9 +46,10 @@ var (
 	rawPostForm      = false // print x-www-form-urlencoded in raw querystring
 	logPostInline    = false
 	logPostInlineAll = false
-	cleanCaptureDir  = false
-	tee              = false
-	verbose          = false
+	//rawCompressedBody	= false	// if true, body is stored in its raw (maybe compressed) form
+	cleanCaptureDir = false
+	tee             = false
+	verbose         = false
 
 	force = false
 
@@ -406,6 +407,9 @@ func main() {
 
 	// -rawform: log x-www-form-urlencoded data as raw query strings
 	flag.BoolVar(&rawPostForm, "rawform", rawPostForm, "log x-www-form-urlencoded forms in raw query string")
+
+	// -rawbody: save req/resp bodies in its raw (maybe compressed) form
+	//flag.BoolVar(&rawCompressedBody, "rawbody", rawCompressedBody, "save req/resp podies in its raw (maybe compressed) form")
 
 	// -tee
 	flag.BoolVar(&tee, "tee", tee, "print logs to stdout along with the logfile")
