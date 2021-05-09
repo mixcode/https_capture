@@ -224,7 +224,7 @@ func runProxy() (err error) {
 	case err = <-chError: // some error
 		if err != nil {
 			if verbose {
-				fmt.Printf("an error detected: %v\n", e)
+				fmt.Printf("an error detected: %v\n", err)
 			}
 		}
 	}
