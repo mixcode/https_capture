@@ -221,11 +221,10 @@ func runProxy() (err error) {
 			fmt.Printf("received an OS signal (%v)\n", s)
 		}
 
-	case e := <-chError: // some error
-		if e != nil {
-			err = e
+	case err = <-chError: // some error
+		if err != nil {
 			if verbose {
-				fmt.Printf("An error occured: %v\n", e)
+				fmt.Printf("an error detected: %v\n", e)
 			}
 		}
 	}
@@ -234,7 +233,9 @@ func runProxy() (err error) {
 	if verbose {
 		fmt.Println("terminating proxy...")
 	}
-	err = server.Shutdown(context.TODO())
+	if e := server.Shutdown(context.TODO()); err == nil {
+		err = e
+	}
 	wg.Wait()
 	if verbose {
 		fmt.Println("proxy terminated")
