@@ -32,11 +32,15 @@ You have to install the generated cert (in this case 'my\_insecure\_root\_ca.cer
 
 A quick example:
 ```
-https_capture -addr=:38080 -dir=./captured -log=log.txt -c -tee my_insecure_root_ca.cer
+https_capture my_insecure_root_ca.cer
 ```
 
-Run the proxy with the generated cert on the machine's `:38080` port. The HTTP requests will be stored in the `./captured` directory. The `-tee` makes the log echoed to STDOUT. The `-c` will clear the capturing directory on start.
+Run the proxy with the generated cert. In default, the proxy listens on the machine's `38080` port. The outline of HTTP requests will be stored to `./captured/log.txt`. The HTTP bodies will be stored in the `./captured` directory.
 
+You may change behaviors by optional arguments like below.
+```
+https_capture -addr=localhost:38081 -dir=./cap -log=./cap/list.txt -c -tee my_insecure_root_ca.cer
+```
 To see available options, do `https_capture -help`.
 
 
