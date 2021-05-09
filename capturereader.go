@@ -1,26 +1,25 @@
 package main
 
 import (
+	"bytes"
 	"io"
 )
 
 // CaptureReader is a io.Reader that captures all input data to a memory buffer
 type CaptureReader struct {
 	R      io.Reader
-	Buffer []byte
+	Buffer *bytes.Buffer
 	Size   int64
 }
 
-const BLOCKSIZE = 1024
-
 func NewCaptureReader(r io.Reader) *CaptureReader {
-	return &CaptureReader{R: r, Buffer: make([]byte, 0), Size: 0}
+	return &CaptureReader{R: r, Buffer: new(bytes.Buffer), Size: 0}
 }
 
 func (b *CaptureReader) Read(p []byte) (n int, err error) {
 	n, err = b.R.Read(p)
 	if n > 0 {
-		b.Buffer = append(b.Buffer, p...)
+		b.Buffer.Write(p[:n])
 		b.Size += int64(n)
 	}
 	return n, err
@@ -35,11 +34,11 @@ type CaptureReadCloser struct {
 }
 
 func NewCaptureReadCloserCallback(r io.ReadCloser, onClose func(error)) *CaptureReadCloser {
-	return &CaptureReadCloser{CaptureReader: CaptureReader{R: r, Buffer: make([]byte, 0), Size: 0}, C: r, Closed: false, onClose: onClose}
+	return &CaptureReadCloser{CaptureReader: CaptureReader{R: r, Buffer: new(bytes.Buffer), Size: 0}, C: r, Closed: false, onClose: onClose}
 }
 
 func NewCaptureReadCloser(r io.ReadCloser) *CaptureReadCloser {
-	return &CaptureReadCloser{CaptureReader: CaptureReader{R: r, Buffer: make([]byte, 0), Size: 0}, C: r, Closed: false}
+	return &CaptureReadCloser{CaptureReader: CaptureReader{R: r, Buffer: new(bytes.Buffer), Size: 0}, C: r, Closed: false}
 }
 
 func (b *CaptureReadCloser) Close() error {

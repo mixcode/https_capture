@@ -107,7 +107,7 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 		defer l.flush()
 
 		// Print the connection
-		l.writef("%s [%d] end %s (%s) %s\n", timestamp(), sessionId, conn.Req.Method, conn.Resp.Status, conn.Req.URL.String())
+		l.writef("%s [%d] end (%s) %s %s\n", timestamp(), sessionId, conn.Resp.Status, conn.Req.Method, conn.Req.URL.String())
 
 		l.writef("\t==== Req: headers ====\n")
 		for k, v := range conn.Req.Header {
@@ -131,7 +131,7 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			fname := fmt.Sprintf("%06d_a_%s%s", sessionId, conn.Req.Method, ext)
 			fpath := filepath.Join(captureDir, fname)
 
-			body := conn.ReqBody.Buffer[:conn.ReqBody.Size]
+			body := conn.ReqBody.Buffer.Bytes()
 
 			ce := conn.Req.Header["Content-Encoding"]
 			if len(ce) > 0 && ce[0] == "gzip" {
@@ -225,7 +225,7 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			}
 			outpath := filepath.Join(captureDir, shortname)
 
-			body := conn.RespBody.Buffer[:conn.RespBody.Size]
+			body := conn.RespBody.Buffer.Bytes()
 			// TODO: log uncompressed response?
 
 			saved := false
