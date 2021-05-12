@@ -44,7 +44,7 @@ func TestCaptureReader(t *testing.T) {
 	if testdata != string(outbuf[:sz]) {
 		t.Errorf("read data not match")
 	}
-	if testdata != string(cr.Buffer[:cr.Size]) {
+	if testdata != string(cr.Buffer.String()) {
 		t.Errorf("captured data not match")
 	}
 

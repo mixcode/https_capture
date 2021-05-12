@@ -93,26 +93,29 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 		return
 	}
 
-	return func(err error) {
-		mutex.Lock()
-		s, ok := session[sessionId]
-		if !ok || s != conn {
-			mutex.Unlock()
-			return
-		}
-		delete(session, sessionId)
-		mutex.Unlock()
-
+	//
+	// the handler main function
+	//
+	mainFunc := func(inErr error) (err error) {
 		l := newLog()
 		defer l.flush()
 
-		// Print the connection
+		if inErr != nil {
+			// HTTP error happened
+			l.writef("%s [%d] failed (%v) %s %s\n", timestamp(), sessionId, inErr.Error(), conn.Req.Method, conn.Req.URL.String())
+			return nil // ignore and continue
+		}
+
+		// print the connection info
 		l.writef("%s [%d] end (%s) %s %s\n", timestamp(), sessionId, conn.Resp.Status, conn.Req.Method, conn.Req.URL.String())
 
+		// write request headers
 		l.writef("\t==== Req: headers ====\n")
 		for k, v := range conn.Req.Header {
 			l.writef("\t\t%s: %v\n", k, v)
 		}
+
+		// write the request body
 		if conn.ReqBody.Size > 0 {
 			l.writef("\t---- Req: body ----\n")
 			contentType := ""
@@ -160,12 +163,13 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			}
 		}
 
+		// write response headers
 		l.writef("\t==== Resp (%s): headers ====\n", conn.Resp.Status)
 		for k, v := range conn.Resp.Header {
 			l.writef("\t\t%s: %v\n", k, v)
 		}
 
-		// Write the result body to a file
+		// Write the response body
 		if conn.RespBody.Size > 0 {
 
 			l.writef("\t---- Resp: body ----\n")
@@ -226,7 +230,7 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			outpath := filepath.Join(captureDir, shortname)
 
 			body := conn.RespBody.Buffer.Bytes()
-			// TODO: log uncompressed response?
+			// TODO: log raw compressed body?
 
 			saved := false
 			saved, err = logFunc(l, isText, contentType, outpath, body, "\t\t")
@@ -237,7 +241,27 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 				l.writef("\t\t(saved to %s)\n", shortname)
 			}
 		}
-		l.writef("\n")
+		l.writef("\n")	// a blank line to improve readability
+		return
+	}
+
+	// actual callback function for proxy engine
+	return func(inErr error) {
+		// remove the current session from the buffer
+		mutex.Lock()
+		s, ok := session[sessionId]
+		if !ok || s != conn {
+			mutex.Unlock()
+			return
+		}
+		delete(session, sessionId)
+		mutex.Unlock()
+
+		// call handler main
+		err := mainFunc(inErr)
+		if err != nil {
+			chError <- err
+		}
 	}
 }
 
@@ -284,12 +308,3 @@ func timestamp() string {
 	return time.Now().Format(time.RFC3339)
 }
 
-/*
-// write a message to the logfile
-func writef(format string, arg ...interface{}) {
-	fmt.Fprintf(listWriter, format, arg...)
-	if tee {
-		fmt.Printf(format, arg...)
-	}
-}
-*/

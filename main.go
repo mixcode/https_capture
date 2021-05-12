@@ -198,8 +198,8 @@ func runProxy() (err error) {
 	var wg sync.WaitGroup
 	server := &http.Server{Addr: listenAddress, Handler: proxy}
 
+	wg.Add(1)
 	go func() {
-		wg.Add(1)
 		defer wg.Done()
 		e := server.ListenAndServe()
 		if e == http.ErrServerClosed {

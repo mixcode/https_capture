@@ -6,14 +6,15 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	_ "embed"
 	"encoding/pem"
 	"fmt"
 	"math/big"
 	"time"
+
+	_ "embed"
 )
 
-// A default *insure* ECDSA key
+// A default *insecure* ECDSA key
 
 //go:embed generated/p521privatekey.der
 var defaultKeyDer []byte // default key embedded from generated/p521privatekey.der
