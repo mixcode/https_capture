@@ -88,7 +88,6 @@ func makeSerial() *big.Int {
 
 // Create a ecdsa Private Key with input of zero-bytes
 func generateZeroInputP521Key() (key *ecdsa.PrivateKey, err error) {
-
 	var z zeroReader = 0
 	return ecdsa.GenerateKey(elliptic.P521(), z)
 }

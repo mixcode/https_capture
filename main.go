@@ -83,7 +83,7 @@ func runProxy() (err error) {
 	} else {
 		// load the cert
 		if certFile == "" {
-			return fmt.Errorf("No certfiticate file supplied. A Root CA cert in PEM format must be given.\n(If you don't have a cert, '%[1]s -generate-cert' will give you a dummy insecure self-signed cert. Be sure to install the cert to your web client and try again. See '%[1]s -help' for all options)", os.Args[0])
+			return fmt.Errorf("no certfiticate file supplied. A Root CA cert in PEM format must be given.\n(If you don't have a cert, '%[1]s -generate-cert' will give you a dummy insecure self-signed cert. Be sure to install the cert to your web client and try again. See '%[1]s -help' for all options)", os.Args[0])
 		}
 		var pm, rest []byte
 		var pb *pem.Block
@@ -213,7 +213,7 @@ func runProxy() (err error) {
 
 	// wait for an OS signal
 	chSignal := make(chan os.Signal, 1)
-	signal.Notify(chSignal, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGHUP)
+	signal.Notify(chSignal, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 
 	select {
 	case s := <-chSignal: // a signal received

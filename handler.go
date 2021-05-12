@@ -54,7 +54,7 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			savedToFile = false
 			s := string(body)
 			done := false
-			if contentType == "application/x-www-form-urlencoded" && rawPostForm == false {
+			if contentType == "application/x-www-form-urlencoded" && !rawPostForm {
 				// form-urlencoded
 				values, e := url.ParseQuery(s)
 				if e == nil {
@@ -74,7 +74,7 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			}
 		} else {
 			savedToFile = true
-			if contentType == "application/x-www-form-urlencoded" && rawPostForm == false {
+			if contentType == "application/x-www-form-urlencoded" && !rawPostForm {
 				// form-urlencoded
 				values, e := url.ParseQuery(string(body))
 				if e == nil {
@@ -241,7 +241,7 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 				l.writef("\t\t(saved to %s)\n", shortname)
 			}
 		}
-		l.writef("\n")	// a blank line to improve readability
+		l.writef("\n") // a blank line to improve readability
 		return
 	}
 
@@ -307,4 +307,3 @@ func respHandler(resp *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
 func timestamp() string {
 	return time.Now().Format(time.RFC3339)
 }
-
