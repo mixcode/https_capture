@@ -28,12 +28,14 @@ import (
 
 var (
 	// session
-	mutex   sync.Mutex
-	session = make(map[int64]*Connection)
+	sessionMutex sync.Mutex
+	session      = make(map[int64]*Connection)
 )
 
 // A captured HTTP connection
 type Connection struct {
+	Host string // host name for HTTP request. maybe empty.
+
 	Req     *http.Request      // HTTP request
 	ReqBody *CaptureReadCloser // HTTP request body stream
 
@@ -248,14 +250,14 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 	// actual callback function for proxy engine
 	return func(inErr error) {
 		// remove the current session from the buffer
-		mutex.Lock()
+		sessionMutex.Lock()
 		s, ok := session[sessionId]
 		if !ok || s != conn {
-			mutex.Unlock()
+			sessionMutex.Unlock()
 			return
 		}
 		delete(session, sessionId)
-		mutex.Unlock()
+		sessionMutex.Unlock()
 
 		// call handler main
 		err := mainFunc(inErr)
@@ -267,8 +269,9 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 
 // record the start of a HTTP request
 func reqHandler(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+
 	sessionId := ctx.Session
-	conn := Connection{Req: req}
+	conn := Connection{Host: ctx.Host, Req: req}
 	newReq := req.Clone(context.Background())
 
 	if req.Body != nil {
@@ -276,22 +279,22 @@ func reqHandler(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.
 		newReq.Body = conn.ReqBody
 	}
 
-	mutex.Lock()
+	sessionMutex.Lock()
 	session[sessionId] = &conn
-	mutex.Unlock()
+	sessionMutex.Unlock()
 
 	log := newLog()
 	defer log.flush()
-	log.writef("%s [%d] start %s %s\n", timestamp(), sessionId, conn.Req.Method, conn.Req.URL.String())
+	log.writef("%s [%d] start %s %s (%s)\n", timestamp(), sessionId, conn.Req.Method, conn.Req.URL.String(), conn.Host)
 	return newReq, nil
 }
 
 // record a HTTP response
 func respHandler(resp *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
 	sessionId := ctx.Session
-	mutex.Lock()
+	sessionMutex.Lock()
 	conn := session[sessionId]
-	mutex.Unlock()
+	sessionMutex.Unlock()
 	if conn == nil {
 		return resp
 	}

@@ -1,7 +1,5 @@
-github.com/mixcode/goproxy v0.0.0-20210428033119-52d6b943f3b4 h1:VUt01zihU4Y8OAt9BZ6ZXDo4rCXnDVpbo6WVh9ivPf4=
-github.com/mixcode/goproxy v0.0.0-20210428033119-52d6b943f3b4/go.mod h1:VMUcTlN6/EsBLa14Cj6A1GR1EXnjoaJP+WIW6li5wTQ=
-github.com/mixcode/goproxy v1.1.1 h1:vCh5HguQz2OieYy+8On/4++JVfmWmvpypzye8gj2wjM=
-github.com/mixcode/goproxy v1.1.1/go.mod h1:VMUcTlN6/EsBLa14Cj6A1GR1EXnjoaJP+WIW6li5wTQ=
+github.com/mixcode/goproxy v1.1.2 h1:gmL3SJzSFj+tninLz+Y5JDIPzKIySbQfYeZVfkIL6Q0=
+github.com/mixcode/goproxy v1.1.2/go.mod h1:VMUcTlN6/EsBLa14Cj6A1GR1EXnjoaJP+WIW6li5wTQ=
 github.com/mixcode/goproxy/ext v0.0.0-20210427112856-bd191b4558d9 h1:tZb8IpTDl5ZcwvFZ9Cnsbqjrlg347m8e5a5FEza4ACM=
 github.com/mixcode/goproxy/ext v0.0.0-20210427112856-bd191b4558d9/go.mod h1:dRmFnCt/tigS3WiG75+WqDQhZ4b8ibyUU1PCi0nzwtE=
 github.com/rogpeppe/go-charset v0.0.0-20180617210344-2471d30d28b4/go.mod h1:qgYeAmZ5ZIpBWTGllZSQnw97Dj+woV0toclVaRGI8pc=

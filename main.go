@@ -19,6 +19,9 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -53,6 +56,10 @@ var (
 
 	force = false
 
+	// non-TLS servers for connect
+	nonTLSPort = make(map[int]bool)
+	//nonTLSAddr = make(map[string]bool)
+
 	// cert and key filename (supplied by argument 0 and 1)
 	certFile = ""
 	keyFile  = ""
@@ -63,6 +70,9 @@ var (
 
 	// error handling
 	chError = make(chan error, 1)
+
+	// host:port matcher
+	mMatchHost = regexp.MustCompile(`^(.*):(\d+)$`)
 )
 
 // ==============================
@@ -176,12 +186,27 @@ func runProxy() (err error) {
 	// prepare the proxy engine
 	proxy := goproxy.NewProxyHttpServer()
 
-	connectAction := &goproxy.ConnectAction{ // new connection handler
+	tlsConnectAction := &goproxy.ConnectAction{ // new connection handler
 		Action:    goproxy.ConnectMitm,
 		TLSConfig: goproxy.TLSConfigFromCA(&cert),
 	}
+	rawConnectAction := &goproxy.ConnectAction{
+		Action:    goproxy.ConnectHTTPMitm,
+		TLSConfig: goproxy.TLSConfigFromCA(&cert),
+	}
 	var connectHandler goproxy.FuncHttpsHandler = func(host string, proxyCtx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
-		return connectAction, host
+		m := mMatchHost.FindStringSubmatch(host)
+		if m != nil {
+			// see the port number and test for non-TLS ports
+			port, e := strconv.Atoi(m[2])
+			if e == nil && nonTLSPort[port] {
+				fmt.Printf("RAW CONNECT: host[%s], %v\n", host, proxyCtx.Req)
+				return rawConnectAction, host
+			}
+		}
+		fmt.Printf("TLS CONNECT: host[%s], %v\n", host, proxyCtx.Req)
+
+		return tlsConnectAction, host
 	}
 	proxy.OnRequest().HandleConnect(connectHandler)
 
@@ -429,6 +454,10 @@ func main() {
 	var printCertFlag = false
 	flag.BoolVar(&printCertFlag, "print-builtin-cert", false, "write the built-in default insecure Root CA to a file")
 
+	// -non-tls-ports: list of non-TLS connect ports
+	var nonTLSPortList = ""
+	flag.StringVar(&nonTLSPortList, "non-tls-ports", "80", "comma-separated list of non-TLS ports")
+
 	flag.Parse()
 
 	certFile, keyFile = flag.Arg(0), flag.Arg(1)
@@ -442,6 +471,14 @@ func main() {
 		// print the built-in cert
 		err = printCert()
 	} else {
+		// set non-TLS port numbers
+		s := strings.Split(nonTLSPortList, ",")
+		for _, p := range s {
+			portnum, e := strconv.Atoi(strings.TrimSpace(p))
+			if e == nil {
+				nonTLSPort[portnum] = true
+			}
+		}
 		// run proxy
 		err = runProxy()
 	}
