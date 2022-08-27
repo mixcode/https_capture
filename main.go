@@ -458,8 +458,13 @@ func main() {
 	var nonTLSPortList = ""
 	flag.StringVar(&nonTLSPortList, "non-tls-ports", "80", "comma-separated list of non-TLS ports")
 
+	// Save content types
+	var contentTypes = ""
+	flag.StringVar(&contentTypes, "contenttypes", "", "comma-separated list of content types to be recorded.")
+
 	flag.Parse()
 
+	// set arguments
 	certFile, keyFile = flag.Arg(0), flag.Arg(1)
 
 	// main function
@@ -471,6 +476,8 @@ func main() {
 		// print the built-in cert
 		err = printCert()
 	} else {
+		// Init flags
+
 		// set non-TLS port numbers
 		s := strings.Split(nonTLSPortList, ",")
 		for _, p := range s {
@@ -479,6 +486,18 @@ func main() {
 				nonTLSPort[portnum] = true
 			}
 		}
+
+		// set log file name
+		logFileName = filepath.Join(captureDir, defaultLogFileName)
+
+		// set content type match
+		if contentTypes != "" {
+			saveContentType = make(map[string]bool)
+			for _, s := range strings.Split(contentTypes, ",") {
+				saveContentType[s] = true
+			}
+		}
+
 		// run proxy
 		err = runProxy()
 	}

@@ -19,6 +19,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sync"
 	"time"
 
@@ -30,7 +31,66 @@ var (
 	// session
 	sessionMutex sync.Mutex
 	session      = make(map[int64]*Connection)
+
+	// Save files only if filename is matched with this regex
+	saveIfMatch      []*regexp.Regexp // if set, save files that match with this regexes
+	doNotSaveIfMatch []*regexp.Regexp // if set, do not save the files
+
+	// Save files if filename is matched with this regex
+	saveContentType      map[string]bool // if set, save files that Content-Type is in this list
+	doNotSaveContentType map[string]bool // if set, do not save that Content-Type is in this list
 )
+
+func contentTypeSaveable(contentType string) bool {
+
+	if len(saveContentType) == 0 && len(doNotSaveContentType) == 0 {
+		return true
+	}
+
+	if len(doNotSaveContentType) == 0 {
+		// do not save files by default. save only in the saveContentType list
+		return saveContentType[contentType]
+	}
+
+	if len(saveContentType) == 0 {
+		// save files by default, but don't save if in doNotSaveContentType list
+		return !doNotSaveContentType[contentType]
+	}
+
+	// both list exists
+	// must contained on saveContentType list but must NOT contained on doNotSaveContentType list
+	return saveContentType[contentType] && !doNotSaveContentType[contentType]
+}
+
+func filenameSaveable(filename string) bool {
+
+	if len(saveIfMatch) == 0 && len(doNotSaveIfMatch) == 0 {
+		return true
+	}
+
+	matched := func(rl []*regexp.Regexp) bool {
+		for _, r := range rl {
+			if r.MatchString(filename) {
+				return true
+			}
+		}
+		return false
+	}
+
+	if len(doNotSaveIfMatch) == 0 {
+		// do not save files by default, save only if name matched against saveIfMatch
+		return matched(saveIfMatch)
+	}
+
+	if len(saveIfMatch) == 0 {
+		//save files by default, do not save if name matched against doNotSaveIfMatch
+		return !matched(doNotSaveIfMatch)
+	}
+
+	// both list exists
+	// must matched against saveIfMatch and NOT matched against doNotSaveIfMatch
+	return matched(saveIfMatch) && !matched(doNotSaveIfMatch)
+}
 
 // A captured HTTP connection
 type Connection struct {
@@ -52,6 +112,12 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 	//
 
 	logFunc := func(l *log, isText bool, contentType, filename string, body []byte, indent string) (savedToFile bool, err error) {
+
+		if !contentTypeSaveable(contentType) || !filenameSaveable(filename) {
+			// contained in do-not-save list
+			return false, nil
+		}
+
 		if logPostInlineAll || (logPostInline && isText) {
 			savedToFile = false
 			s := string(body)
