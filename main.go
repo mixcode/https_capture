@@ -397,7 +397,7 @@ func emptyDir(path string) (err error) {
 // program startup
 //=================================
 
-func main() {
+func runMain() (err error) {
 
 	//
 	// command-line options
@@ -462,19 +462,21 @@ func main() {
 	var contentTypes = ""
 	flag.StringVar(&contentTypes, "contenttypes", "", "comma-separated list of content types to be recorded.")
 
+	var contentNameMatch = ""
+	flag.StringVar(&contentNameMatch, "contentname", "", "regex match of content names to be recorded.")
+
 	flag.Parse()
 
 	// set arguments
 	certFile, keyFile = flag.Arg(0), flag.Arg(1)
 
 	// main function
-	var err error
 	if genCertFlag {
 		// generate a new cert
-		err = genCert()
+		return genCert()
 	} else if printCertFlag {
 		// print the built-in cert
-		err = printCert()
+		return printCert()
 	} else {
 		// Init flags
 
@@ -498,10 +500,25 @@ func main() {
 			}
 		}
 
+		// filename match
+		if contentNameMatch != "" {
+			m, e := regexp.Compile(contentNameMatch)
+			if e != nil {
+				return e
+			}
+			saveIfMatch = make([]*regexp.Regexp, 1)
+			saveIfMatch[0] = m
+		}
+
 		// run proxy
 		err = runProxy()
 	}
+	return
+}
 
+func main() {
+
+	err := runMain()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)

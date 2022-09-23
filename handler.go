@@ -20,6 +20,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"sync"
 	"time"
 
@@ -39,6 +40,8 @@ var (
 	// Save files if filename is matched with this regex
 	saveContentType      map[string]bool // if set, save files that Content-Type is in this list
 	doNotSaveContentType map[string]bool // if set, do not save that Content-Type is in this list
+
+	contentRangeMatch = regexp.MustCompile(`^([^ ]+) ((\d+)-(\d+)|\*)/(.+)$`)
 )
 
 func contentTypeSaveable(contentType string) bool {
@@ -103,15 +106,25 @@ type Connection struct {
 	RespBody *CaptureReadCloser // HTTP response body stream
 }
 
+func httpRespOpenCallback(sessionId int64, conn *Connection) func(error) {
+	l := newLog()
+	defer l.flush()
+
+	// print the connection info
+	l.writef("%s [%d] open_resp (%s) %s %s\n", timestamp(), sessionId, conn.Resp.Status, conn.Req.Method, conn.Req.URL.String())
+
+	return nil
+}
+
 // HTTP connection closed; write the result to file
-func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
+func makeHttpRespCloseCallback(sessionId int64, conn *Connection) func(error) {
 
 	//
 	// This sub-function is called when a HTTP(s) connection has closed.
 	// session[sessionId] contains complete history of a connection
 	//
 
-	logFunc := func(l *log, isText bool, contentType, filename string, body []byte, indent string) (savedToFile bool, err error) {
+	logFunc := func(l *hlog, isText bool, contentType, filename string, body []byte, indent string) (savedToFile bool, err error) {
 
 		if !contentTypeSaveable(contentType) || !filenameSaveable(filename) {
 			// contained in do-not-save list
@@ -175,7 +188,7 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 		}
 
 		// print the connection info
-		l.writef("%s [%d] end (%s) %s %s\n", timestamp(), sessionId, conn.Resp.Status, conn.Req.Method, conn.Req.URL.String())
+		l.writef("%s [%d] close_resp (%s) %s %s\n", timestamp(), sessionId, conn.Resp.Status, conn.Req.Method, conn.Req.URL.String())
 
 		// write request headers
 		l.writef("\t==== Req: headers ====\n")
@@ -268,7 +281,7 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			// determine file extension
 			isText := true
 			ext := path.Ext(outfilename)
-			filebody := outfilename[:len(outfilename)-len(ext)]
+			filenameBody := outfilename[:len(outfilename)-len(ext)]
 			if ext == "" && contentType != "" {
 				_, _, ext, isText, _ = mediaType(contentType)
 			}
@@ -278,23 +291,47 @@ func httpCloseCallback(sessionId int64, conn *Connection) func(error) {
 			}
 
 			if filename_unknown && ext == ".html" {
-				outfilename = "index.html"
+				outfilename = "index"
 			} else {
-				outfilename = filebody + ext
+				outfilename = filenameBody
 			}
+
 			outfilename = fmt.Sprintf("%06d_b_%s", sessionId, outfilename)
 
 			// trim if the filename is too long
 			shortname := outfilename
 			if len(shortname) > filenameMaxLen {
-				l := len(ext)
-				if l > filenameMaxLen {
-					// a long filename starts with a dot
-					shortname = shortname[:filenameMaxLen]
-				} else {
-					shortname = shortname[:filenameMaxLen-l] + ext
-				}
+				shortname = shortname[:filenameMaxLen]
 			}
+
+			if conn.Resp.StatusCode == 206 { // 206 partial contents
+				// Add content offset and size if the data is 206 partial content
+				shortname += func() string {
+					r := conn.Resp.Header["Content-Range"]
+					if len(r) == 0 {
+						return ""
+					}
+					start, _, total, e := contentRange(r[0])
+					if e != nil {
+						return ""
+					}
+					actualEnd := start + conn.RespBody.Size
+					if actualEnd == 0 {
+						return ""
+					}
+					if total > 0 && start == 0 && actualEnd == total {
+						// Full content has received
+						return ""
+					}
+					s := fmt.Sprintf("%d-%d", start, actualEnd-1)
+					if total > 0 {
+						s = fmt.Sprintf("%s(%d)", s, total)
+					}
+					return "[partial_" + s + "]"
+				}()
+			}
+			shortname = shortname + ext
+
 			outpath := filepath.Join(captureDir, shortname)
 
 			body := conn.RespBody.Buffer.Bytes()
@@ -351,7 +388,7 @@ func reqHandler(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.
 
 	log := newLog()
 	defer log.flush()
-	log.writef("%s [%d] start %s %s (%s)\n", timestamp(), sessionId, conn.Req.Method, conn.Req.URL.String(), conn.Host)
+	log.writef("%s [%d] start_req %s %s (%s)\n", timestamp(), sessionId, conn.Req.Method, conn.Req.URL.String(), conn.Host)
 	return newReq, nil
 }
 
@@ -367,7 +404,8 @@ func respHandler(resp *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
 
 	conn.Resp = resp
 	if resp.Body != nil {
-		conn.RespBody = NewCaptureReadCloserCallback(resp.Body, httpCloseCallback(sessionId, conn))
+		httpRespOpenCallback(sessionId, conn)
+		conn.RespBody = NewCaptureReadCloserCallback(resp.Body, makeHttpRespCloseCallback(sessionId, conn))
 		resp.Body = conn.RespBody
 	}
 	return resp
@@ -375,4 +413,36 @@ func respHandler(resp *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
 
 func timestamp() string {
 	return time.Now().Format(time.RFC3339)
+}
+
+func contentRange(contentRangeString string) (start, end, total int64, err error) {
+	m := contentRangeMatch.FindStringSubmatch(contentRangeString)
+	if m[1] != "bytes" {
+		err = fmt.Errorf("content range unknown unit: %s", m[1])
+		return
+	}
+	rStart, rEnd := m[3], m[4]
+	if rStart == "" {
+		rStart = "0"
+	}
+	if rEnd == "" {
+		rEnd = rStart
+	}
+	rStartPos, e := strconv.ParseInt(rStart, 10, 64)
+	if e != nil {
+		err = fmt.Errorf("content range parse error: %s", rStart)
+		return
+	}
+	rEndPos, e := strconv.ParseInt(rEnd, 10, 64)
+	if e != nil {
+		err = fmt.Errorf("content range parse error: %s", rEnd)
+		return
+	}
+	start, end = rStartPos, rEndPos
+
+	rSize := m[5]
+	if rSize != "*" {
+		total, err = strconv.ParseInt(rSize, 10, 64)
+	}
+	return
 }

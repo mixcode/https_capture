@@ -12,23 +12,23 @@ var (
 	chLogBuffer = make(chan []byte, 64)
 )
 
-type log struct {
+type hlog struct {
 	b *bytes.Buffer
 }
 
-func newLog() *log {
-	return &log{b: &bytes.Buffer{}}
+func newLog() *hlog {
+	return &hlog{b: &bytes.Buffer{}}
 }
 
-func (l *log) Write(p []byte) (n int, err error) {
+func (l *hlog) Write(p []byte) (n int, err error) {
 	return l.b.Write(p)
 }
 
-func (l *log) writef(format string, arg ...interface{}) {
+func (l *hlog) writef(format string, arg ...interface{}) {
 	fmt.Fprintf(l.b, format, arg...)
 }
 
-func (l *log) flush() {
+func (l *hlog) flush() {
 	buf := l.b.Bytes()
 	if len(buf) > 0 {
 		go func() {
